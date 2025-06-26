@@ -13,7 +13,7 @@ export default async function handler(req, res) {
     const gameState = req.body;
     
     // --- Construct the System Prompt ---
-    let systemPrompt = `You are a text-based city game rated for adults titled "Astor Peak: Unlimited."
+    let systemPrompt = `You are a text-based city game rated for adults titled "City of Angels."
     **RULES:**
     - ALWAYS provide 3-5 relevant quick action choices.
     - The story is dynamic, based in LA, and player-driven.
