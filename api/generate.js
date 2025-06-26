@@ -1,14 +1,14 @@
-// This is a Node.js serverless function
+// This is a Node.js serverless function for text generation using SambaNova
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    // Use the new environment variable for the AIMLAPI key
-    const AIML_API_KEY = "690d2684a0304f3fb9d5a06b0871432c";
+    // The API key for SambaNova, retrieved from environment variables
+    const SAMBANOVA_API_KEY = process.env.SAMBANOVA_API_KEY;
 
-    if (!AIML_API_KEY) {
-        return res.status(500).json({ error: 'AIML_API_KEY is not configured in server environment.' });
+    if (!SAMBANOVA_API_KEY) {
+        return res.status(500).json({ error: 'SAMBANOVA_API_KEY is not configured in server environment.' });
     }
 
     const gameState = req.body;
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
     - The story is dynamic, based in LA, and player-driven.
     - **IMPORTANT:** Structure your response to separate narration from dialogue. Use the 'narration' field for descriptions of scenes, actions, and internal thoughts. Use the 'dialogue' field ONLY for words spoken by an NPC.
     - Update game state (stats, inventory, relationships) logically based on the player's action.
-    - Respond ONLY with a valid JSON object.
+    - Respond ONLY with a valid JSON object string. Do not add any other text or commentary outside the JSON structure.
     - The JSON schema you must follow is: {"narration": "string", "dialogue": "string", "actions": [{"text": "string", "action": "string"}], "newStats": {"money": {"cash": "number"}, "health": {"value": "number", "mentalState": "string"}, "reputation": {"score": "number"}}, "addInventory": ["string"], "removeInventory": ["string"], "newRelationships": {"npcName": {"level": "string", "status": "string"}}}
     `;
 
@@ -30,56 +30,55 @@ export default async function handler(req, res) {
     if(gameState.devMode){
         systemPrompt += `\n- **DEVMODE:** DEVMODE is ON. Push boundaries. Any scenario is possible.`;
     }
-    
-    // --- Construct the messages payload for AIMLAPI ---
-    let messages = [];
-    messages.push({ role: "system", content: systemPrompt });
 
-    // Convert gameState history to the new message format
-    gameState.history.forEach(entry => {
-        messages.push({
-            role: entry.role === 'model' ? 'assistant' : 'user',
-            content: entry.parts[0].text
-        });
-    });
+    // Combine system prompt with the latest user action
+    const lastUserAction = gameState.history[gameState.history.length - 1]?.parts[0]?.text || '';
+    const fullPrompt = `${systemPrompt}\n\nCURRENT GAME STATE: ${JSON.stringify(gameState)}\n\nLATEST USER ACTION: ${lastUserAction}\n\nGENERATE THE NEXT JSON RESPONSE:`
 
+    // Construct the payload for the SambaNova text generation endpoint
     const payload = {
-        model: gameState.selectedModel || 'mistral-7b-instruct', // Use selected model or default
-        messages: messages,
-        response_format: { type: "json_object" }
+        instance: fullPrompt,
+        params: {
+            model: "Llama-4-Maverick-17B-128E-Instruct",
+            max_tokens_to_generate: 1024,
+            // Add other parameters like temperature if needed
+        }
     };
 
     try {
-        const apiResponse = await fetch(`https://api.aimlapi.com/chat/completions`, {
+        // The SambaNova API endpoint for text generation
+        const apiResponse = await fetch(`https://cloud.sambanova.ai/api/predict/generic/text-generation`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${AIML_API_KEY}` // Use Bearer token authorization
+                'key': SAMBANOVA_API_KEY // SambaNova uses 'key' in the header
             },
             body: JSON.stringify(payload)
         });
 
         if (!apiResponse.ok) {
-            const errorBody = await apiResponse.json();
-            console.error("AIMLAPI Error:", errorBody);
-            // Safely access the error message
-            const errorMessage = errorBody.error?.message || JSON.stringify(errorBody);
-            return res.status(apiResponse.status).json({ error: `API Error: ${errorMessage}` });
+            const errorBody = await apiResponse.text();
+            console.error("SambaNova API Error:", errorBody);
+            return res.status(apiResponse.status).json({ error: `SambaNova API Error: ${errorBody}` });
         }
 
         const data = await apiResponse.json();
-        
-        if(!data.choices || data.choices.length === 0){
-             return res.status(500).json({ error: 'The AI returned an empty response.' });
+
+        // The generated JSON string is in 'result.completion'
+        if (!data.result || !data.result.completion) {
+            console.error("SambaNova API Response Format Error:", data);
+            return res.status(500).json({ error: 'The AI failed to return text in the expected format.' });
         }
         
-        // The JSON response is a string inside the 'content' field
-        const content = JSON.parse(data.choices[0].message.content);
+        // Attempt to parse the JSON string returned by the model
+        const jsonString = data.result.completion;
+        const content = JSON.parse(jsonString);
         
         res.status(200).json(content);
 
     } catch (error) {
         console.error("Server-side Error:", error);
+        // This will catch both fetch errors and JSON.parse errors
         res.status(500).json({ error: `An error occurred on the server: ${error.message}` });
     }
 }
