@@ -60,7 +60,7 @@ export default async function handler(req, res) {
                         properties: {
                             money: { type: "OBJECT", properties: { cash: { type: "NUMBER" }, assets: { type: "ARRAY", items: { type: "STRING" } } } },
                             health: { type: "OBJECT", properties: { value: { type: "NUMBER" }, mentalState: { type: "STRING" }, injuries: { type: "ARRAY", items: { type: "STRING" } }, intoxication: { type: "ARRAY", items: { type: "STRING" } } } },
-                            reputation: { type: "OBJECT", properties: { score: { type: "NUMBER" }, factions: { type: "OBJECT" } } }
+                            reputation: { type: "OBJECT", properties: { score: { type: "NUMBER" }, factions: { type: "OBJECT", properties: { factionName: { type: "STRING" } } } } }
                         }
                     },
                     addInventory: { type: "ARRAY", items: { type: "STRING" }},
@@ -69,11 +69,11 @@ export default async function handler(req, res) {
                         type: "OBJECT",
                         description: "Updates to relationships. The key is the NPC's name.",
                         properties: {
-                            npcName: { // Placeholder for dynamic keys
+                            npcName: { // This is a placeholder to satisfy the schema rule for dynamic keys
                                 type: "OBJECT",
                                 properties: {
-                                    level: { type: "STRING" },
-                                    status: { type: "STRING" }
+                                    level: { type: "STRING", description: "e.g., Acquaintance, Friend, Enemy, Lover" },
+                                    status: { type: "STRING", description: "A brief description of their current feeling, e.g., 'Thinks you are funny'" }
                                 }
                             }
                         }
