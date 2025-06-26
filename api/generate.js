@@ -62,7 +62,9 @@ export default async function handler(req, res) {
         if (!apiResponse.ok) {
             const errorBody = await apiResponse.json();
             console.error("AIMLAPI Error:", errorBody);
-            return res.status(apiResponse.status).json({ error: `API Error: ${errorBody.error.message}` });
+            // Safely access the error message
+            const errorMessage = errorBody.error?.message || JSON.stringify(errorBody);
+            return res.status(apiResponse.status).json({ error: `API Error: ${errorMessage}` });
         }
 
         const data = await apiResponse.json();
