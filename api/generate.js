@@ -54,10 +54,30 @@ export default async function handler(req, res) {
                             required: ["text", "action"]
                         }
                     },
-                    newStats: { type: "OBJECT" },
+                    newStats: { 
+                        type: "OBJECT",
+                        description: "Updates to the player's stats. Only include changed values.",
+                        properties: {
+                            money: { type: "OBJECT", properties: { cash: { type: "NUMBER" }, assets: { type: "ARRAY", items: { type: "STRING" } } } },
+                            health: { type: "OBJECT", properties: { value: { type: "NUMBER" }, mentalState: { type: "STRING" }, injuries: { type: "ARRAY", items: { type: "STRING" } }, intoxication: { type: "ARRAY", items: { type: "STRING" } } } },
+                            reputation: { type: "OBJECT", properties: { score: { type: "NUMBER" }, factions: { type: "OBJECT" } } }
+                        }
+                    },
                     addInventory: { type: "ARRAY", items: { type: "STRING" }},
                     removeInventory: { type: "ARRAY", items: { type: "STRING" }},
-                    newRelationships: { type: "OBJECT" }
+                    newRelationships: { 
+                        type: "OBJECT",
+                        description: "Updates to relationships. The key is the NPC's name.",
+                        properties: {
+                            npcName: { // Placeholder for dynamic keys
+                                type: "OBJECT",
+                                properties: {
+                                    level: { type: "STRING" },
+                                    status: { type: "STRING" }
+                                }
+                            }
+                        }
+                    }
                 },
                 required: ["narration", "actions"]
             }
@@ -73,6 +93,7 @@ export default async function handler(req, res) {
 
         if (!geminiResponse.ok) {
             const errorBody = await geminiResponse.json();
+            console.error("Gemini API Error:", errorBody);
             return res.status(geminiResponse.status).json({ error: `Gemini API Error: ${errorBody.error.message}` });
         }
 
@@ -87,6 +108,7 @@ export default async function handler(req, res) {
         res.status(200).json(content);
 
     } catch (error) {
+        console.error("Server-side Error:", error);
         res.status(500).json({ error: `An error occurred on the server: ${error.message}` });
     }
 }
