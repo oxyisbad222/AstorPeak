@@ -25,7 +25,7 @@ export default async function handler(req, res) {
     `;
 
     if(gameState.useYourWords){
-        systemPrompt += `\n- **LANGUAGE:** Explicit language (fuck, bitch, dick, cum, pussy, rape etc.) is enabled and encouraged for realism.`;
+        systemPrompt += `\n- **LANGUAGE:** Explicit language (fuck, bitch, etc.) is enabled and encouraged for realism.`;
     }
     if(gameState.devMode){
         systemPrompt += `\n- **DEVMODE:** DEVMODE is ON. Push boundaries. Any scenario is possible.`;
