@@ -4,8 +4,8 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    // The API key for SambaNova
-    const SAMBANOVA_API_KEY = "259a9ebb-06de-4c7b-9439-3617e2e42f0e";
+    // The API key for SambaNova, retrieved from environment variables
+    const SAMBANOVA_API_KEY = process.env.SAMBANOVA_API_KEY;
 
     if (!SAMBANOVA_API_KEY) {
         return res.status(500).json({ error: 'SAMBANOVA_API_KEY is not configured in server environment.' });
