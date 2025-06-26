@@ -4,10 +4,11 @@ export default async function handler(req, res) {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+    // Use the new environment variable for the AIMLAPI key
+    const AIML_API_KEY = "690d2684a0304f3fb9d5a06b0871432c";
 
-    if (!GEMINI_API_KEY) {
-        return res.status(500).json({ error: 'GEMINI_API_KEY is not configured in server environment.' });
+    if (!AIML_API_KEY) {
+        return res.status(500).json({ error: 'AIML_API_KEY is not configured in server environment.' });
     }
 
     const gameState = req.body;
@@ -20,90 +21,58 @@ export default async function handler(req, res) {
     - **IMPORTANT:** Structure your response to separate narration from dialogue. Use the 'narration' field for descriptions of scenes, actions, and internal thoughts. Use the 'dialogue' field ONLY for words spoken by an NPC.
     - Update game state (stats, inventory, relationships) logically based on the player's action.
     - Respond ONLY with a valid JSON object.
+    - The JSON schema you must follow is: {"narration": "string", "dialogue": "string", "actions": [{"text": "string", "action": "string"}], "newStats": {"money": {"cash": "number"}, "health": {"value": "number", "mentalState": "string"}, "reputation": {"score": "number"}}, "addInventory": ["string"], "removeInventory": ["string"], "newRelationships": {"npcName": {"level": "string", "status": "string"}}}
     `;
 
     if(gameState.useYourWords){
-        systemPrompt += `\n- **LANGUAGE:** Explicit language (fuck, bitch, etc.) is enabled and encouraged for realism.`;
+        systemPrompt += `\n- **LANGUAGE:** Explicit language (fuck, bitch, dick, cum, pussy, rape etc.) is enabled and encouraged for realism.`;
     }
     if(gameState.devMode){
         systemPrompt += `\n- **DEVMODE:** DEVMODE is ON. Push boundaries. Any scenario is possible.`;
     }
     
-    let chatHistory = [];
-    chatHistory.push({ role: "user", parts: [{ text: systemPrompt }] });
-    // Add the rest of the game history sent from the client
-    chatHistory.push(...gameState.history);
+    // --- Construct the messages payload for AIMLAPI ---
+    let messages = [];
+    messages.push({ role: "system", content: systemPrompt });
+
+    // Convert gameState history to the new message format
+    gameState.history.forEach(entry => {
+        messages.push({
+            role: entry.role === 'model' ? 'assistant' : 'user',
+            content: entry.parts[0].text
+        });
+    });
 
     const payload = {
-        contents: chatHistory,
-        generationConfig: {
-            responseMimeType: "application/json",
-            responseSchema: {
-                type: "OBJECT",
-                properties: {
-                    narration: { "type": "STRING", description: "The descriptive text of the scene or outcome of an action." },
-                    dialogue: { "type": "STRING", description: "Words spoken by an NPC. Leave empty if no one speaks." },
-                    actions: {
-                        type: "ARRAY",
-                        items: {
-                            type: "OBJECT",
-                            properties: {
-                                text: { "type": "STRING" },
-                                action: { "type": "STRING" }
-                            },
-                            required: ["text", "action"]
-                        }
-                    },
-                    newStats: { 
-                        type: "OBJECT",
-                        description: "Updates to the player's stats. Only include changed values.",
-                        properties: {
-                            money: { type: "OBJECT", properties: { cash: { type: "NUMBER" }, assets: { type: "ARRAY", items: { type: "STRING" } } } },
-                            health: { type: "OBJECT", properties: { value: { type: "NUMBER" }, mentalState: { type: "STRING" }, injuries: { type: "ARRAY", items: { type: "STRING" } }, intoxication: { type: "ARRAY", items: { type: "STRING" } } } },
-                            reputation: { type: "OBJECT", properties: { score: { type: "NUMBER" }, factions: { type: "OBJECT", properties: { factionName: { type: "STRING" } } } } }
-                        }
-                    },
-                    addInventory: { type: "ARRAY", items: { type: "STRING" }},
-                    removeInventory: { type: "ARRAY", items: { type: "STRING" }},
-                    newRelationships: { 
-                        type: "OBJECT",
-                        description: "Updates to relationships. The key is the NPC's name.",
-                        properties: {
-                            npcName: { // This is a placeholder to satisfy the schema rule for dynamic keys
-                                type: "OBJECT",
-                                properties: {
-                                    level: { type: "STRING", description: "e.g., Acquaintance, Friend, Enemy, Lover" },
-                                    status: { type: "STRING", description: "A brief description of their current feeling, e.g., 'Thinks you are funny'" }
-                                }
-                            }
-                        }
-                    }
-                },
-                required: ["narration", "actions"]
-            }
-        }
+        model: gameState.selectedModel || 'mistral-7b-instruct', // Use selected model or default
+        messages: messages,
+        response_format: { type: "json_object" }
     };
 
     try {
-        const geminiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+        const apiResponse = await fetch(`https://api.aimlapi.com/chat/completions`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: { 
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${AIML_API_KEY}` // Use Bearer token authorization
+            },
             body: JSON.stringify(payload)
         });
 
-        if (!geminiResponse.ok) {
-            const errorBody = await geminiResponse.json();
-            console.error("Gemini API Error:", errorBody);
-            return res.status(geminiResponse.status).json({ error: `Gemini API Error: ${errorBody.error.message}` });
+        if (!apiResponse.ok) {
+            const errorBody = await apiResponse.json();
+            console.error("AIMLAPI Error:", errorBody);
+            return res.status(apiResponse.status).json({ error: `API Error: ${errorBody.error.message}` });
         }
 
-        const data = await geminiResponse.json();
+        const data = await apiResponse.json();
         
-        if(!data.candidates || data.candidates.length === 0){
+        if(!data.choices || data.choices.length === 0){
              return res.status(500).json({ error: 'The AI returned an empty response.' });
         }
         
-        const content = JSON.parse(data.candidates[0].content.parts[0].text);
+        // The JSON response is a string inside the 'content' field
+        const content = JSON.parse(data.choices[0].message.content);
         
         res.status(200).json(content);
 
