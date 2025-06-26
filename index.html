@@ -90,7 +90,7 @@
         
         <!-- HUD -->
         <div id="hud-container" class="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 text-center text-xs sm:text-sm flex-shrink-0">
-            <div id="hud-money-btn" class="hud-item p-2 rounded-lg"><span id="hud-money">💵 $0</span></div>
+            <div id="hud-money-btn" class="hud-item p-2 rounded-lg"><span id="hud-money">� $0</span></div>
             <div id="hud-health-btn" class="hud-item p-2 rounded-lg"><span id="hud-health">❤️ 100%</span></div>
             <div id="hud-reputation-btn" class="hud-item p-2 rounded-lg"><span id="hud-reputation">🌤️ Neutral</span></div>
             <div id="hud-relationships-btn" class="hud-item p-2 rounded-lg"><span id="hud-relationships">👥 None</span></div>
@@ -101,16 +101,21 @@
 
         <!-- Footer / Input Area -->
         <footer class="p-3 border-t mt-auto flex-shrink-0" style="border-color: var(--border-color);">
-            <div class="flex items-center justify-center gap-2 mb-3">
-                 <button id="inventory-button" class="bg-gray-700 text-white text-sm font-semibold py-2 px-5 rounded-lg w-full max-w-xs">Inventory</button>
-                 <button id="image-gen-button" class="bg-gray-700 text-white text-sm font-semibold py-2 px-5 rounded-lg w-full max-w-xs">Generate Scene</button>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-2 mb-3">
+                 <button id="inventory-button" class="bg-gray-700 text-white text-sm font-semibold py-2 px-5 rounded-lg w-full sm:w-auto flex-grow">Inventory</button>
+                 <button id="image-gen-button" class="bg-gray-700 text-white text-sm font-semibold py-2 px-5 rounded-lg w-full sm:w-auto flex-grow">Generate Scene</button>
+                 <select id="model-selector" class="bg-gray-700 text-white text-sm font-semibold py-2 px-5 rounded-lg w-full sm:w-auto flex-grow focus:outline-none focus:ring-2" style="border-color: var(--border-color); focus-ring-color: var(--primary-accent);">
+                    <option value="mistral-7b-instruct">Mistral (Default)</option>
+                    <option value="llama-3-8b-instruct">Llama 3 (8B)</option>
+                    <option value="mistral-large-latest">Mistral Large</option>
+                 </select>
             </div>
             <div id="quick-actions" class="flex flex-wrap gap-2 mb-3 justify-center"></div>
             <div class="flex gap-2">
                 <input type="text" id="user-input" class="flex-grow bg-gray-900 border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 w-full" style="border-color: var(--border-color); focus-ring-color: var(--primary-accent);" placeholder="What do you do?">
                 <button id="send-button" class="text-white font-bold py-3 px-5 rounded-lg option-button">Send</button>
             </div>
-             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.3.1 (In Development by OxyIsBad)</div>
+             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.3.2 (In Development by OxyIsBad)</div>
         </footer>
     </div>
 
@@ -125,6 +130,7 @@
         const quickActionsContainer = document.getElementById('quick-actions');
         const modalContainer = document.getElementById('modal-container');
         const imageGenButton = document.getElementById('image-gen-button');
+        const modelSelector = document.getElementById('model-selector');
 
         // --- Game State ---
         let gameState = {
@@ -132,6 +138,7 @@
             useYourWords: false,
             currentScene: 'start',
             lastNarration: '',
+            selectedModel: 'mistral-7b-instruct', // Default model
             character: { name: '', age: null, gender: '', orientation: '' },
             stats: {
                 money: { cash: 0, assets: [] },
@@ -271,6 +278,9 @@
         async function generateStory() {
             showLoading(true);
             try {
+                // Update the selected model in game state before sending
+                gameState.selectedModel = modelSelector.value;
+
                 const response = await fetch('/api/generate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
@@ -281,7 +291,6 @@
                 
                 gameState.history.push({role: "user", parts: [{text: content.promptSentToAI}]}, {role: "model", parts: [{text: JSON.stringify(content)}]});
                 
-                // Use deepMerge to update nested stats and relationships correctly
                 if (content.newStats) { deepMerge(gameState.stats, content.newStats); }
                 if (content.newRelationships) { deepMerge(gameState.relationships, content.newRelationships); }
 
@@ -472,3 +481,4 @@
     </script>
 </body>
 </html>
+�
