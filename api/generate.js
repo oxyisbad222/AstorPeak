@@ -1,40 +1,32 @@
 // This is a Node.js serverless function
 export default async function handler(req, res) {
-    // Only allow POST requests
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
     }
 
-    // Get the Gemini API key from Vercel's environment variables
     const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
     if (!GEMINI_API_KEY) {
         return res.status(500).json({ error: 'GEMINI_API_KEY is not configured in server environment.' });
     }
 
-    // Get the full game state from the client's request
     const gameState = req.body;
     
     // --- Construct the System Prompt ---
-    let systemPrompt = `You are a text-based city game rated for adults (Mature and NR content, Language, etc.) titled "Astor Peak: Unlimited."
-    **REMEMBER ALWAYS DISPLAY HUD AND QUICK ACTIONS**
-
-    **II. Gameplay:** Turn-based. ALWAYS offer 3-5 quick options relevant to the situation. Allow freeform text input; interpret and react. Track resources/inventory, health, reputation, and relationships via the gameState.
-
-    **III. Adult Themes:** Integrate drug use, sex (with consequences), and violence (with realistic outcomes).
-
-    **IV. Story:** The narrative is dynamic, based in LA, and player-driven.
-
-    **V. Features:** Use a reputation system, random events, and mini-games. Descriptions can be detailed or concise.
-
-    **VI. Technical:** Respond ONLY with a valid JSON object. Do not include any other text, markdown, or commentary. Update game state through the JSON.
+    let systemPrompt = `You are a text-based city game rated for adults titled "Astor Peak: Unlimited."
+    **RULES:**
+    - ALWAYS provide 3-5 relevant quick action choices.
+    - The story is dynamic, based in LA, and player-driven.
+    - **IMPORTANT:** Structure your response to separate narration from dialogue. Use the 'narration' field for descriptions of scenes, actions, and internal thoughts. Use the 'dialogue' field ONLY for words spoken by an NPC.
+    - Update game state (stats, inventory, relationships) logically based on the player's action.
+    - Respond ONLY with a valid JSON object.
     `;
 
     if(gameState.useYourWords){
-        systemPrompt += `\n**VII. Language:** The user has enabled "/useyourwords". You can and should use explicit language (e.g., "fuck, dick, cum, bitch, slut, pussy, etc.") where it is dramatically appropriate for the gritty, mature setting.`;
+        systemPrompt += `\n- **LANGUAGE:** Explicit language (fuck, bitch, etc.) is enabled and encouraged for realism.`;
     }
     if(gameState.devMode){
-        systemPrompt += `\n**VIII. DEVMODE ACTIVE:** Any situation goes. The game can be altered and any character can be manipulated. This can produce detailed, intense, and graphic gameplay. You have full creative freedom to push the boundaries of the narrative.`;
+        systemPrompt += `\n- **DEVMODE:** DEVMODE is ON. Push boundaries. Any scenario is possible.`;
     }
     
     let chatHistory = [];
@@ -49,7 +41,8 @@ export default async function handler(req, res) {
             responseSchema: {
                 type: "OBJECT",
                 properties: {
-                    text: { "type": "STRING" },
+                    narration: { "type": "STRING", description: "The descriptive text of the scene or outcome of an action." },
+                    dialogue: { "type": "STRING", description: "Words spoken by an NPC. Leave empty if no one speaks." },
                     actions: {
                         type: "ARRAY",
                         items: {
@@ -61,12 +54,12 @@ export default async function handler(req, res) {
                             required: ["text", "action"]
                         }
                     },
-                    newStats: { type: "OBJECT", properties: { money: { "type": "NUMBER" }, health: { "type": "NUMBER" }, reputation: { "type": "NUMBER" } } },
+                    newStats: { type: "OBJECT" },
                     addInventory: { type: "ARRAY", items: { type: "STRING" }},
                     removeInventory: { type: "ARRAY", items: { type: "STRING" }},
                     newRelationships: { type: "OBJECT" }
                 },
-                required: ["text", "actions"]
+                required: ["narration", "actions"]
             }
         }
     };
@@ -80,7 +73,6 @@ export default async function handler(req, res) {
 
         if (!geminiResponse.ok) {
             const errorBody = await geminiResponse.json();
-            console.error("Gemini API Error:", errorBody);
             return res.status(geminiResponse.status).json({ error: `Gemini API Error: ${errorBody.error.message}` });
         }
 
@@ -92,11 +84,9 @@ export default async function handler(req, res) {
         
         const content = JSON.parse(data.candidates[0].content.parts[0].text);
         
-        // Send the complete AI-generated JSON back to the client
         res.status(200).json(content);
 
     } catch (error) {
-        console.error("Server-side Error:", error);
         res.status(500).json({ error: `An error occurred on the server: ${error.message}` });
     }
 }
