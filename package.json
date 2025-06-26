@@ -1,0 +1,21 @@
+{
+  "name": "astor-peak-unlimited",
+  "version": "3.2.1",
+  "description": "A generative text-based adventure game.",
+  "main": "index.html",
+  "scripts": {
+    "start": "serve",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "tba",
+    "generative-ai",
+    "gemini",
+    "game"
+  ],
+  "author": "OxyIsBad",
+  "license": "UNLICENSED",
+  "devDependencies": {
+    "serve": "^14.2.1"
+  }
+}
