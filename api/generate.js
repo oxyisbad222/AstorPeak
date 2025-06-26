@@ -31,9 +31,17 @@ export default async function handler(req, res) {
         systemPrompt += `\n- **DEVMODE:** DEVMODE is ON. Push boundaries. Any scenario is possible.`;
     }
 
-    // Combine system prompt with the latest user action
+    // Get the last user action from history
     const lastUserAction = gameState.history[gameState.history.length - 1]?.parts[0]?.text || '';
-    const fullPrompt = `${systemPrompt}\n\nCURRENT GAME STATE: ${JSON.stringify(gameState)}\n\nLATEST USER ACTION: ${lastUserAction}\n\nGENERATE THE NEXT JSON RESPONSE:`
+    
+    // Format the prompt for the Llama-style instruct model
+    const fullPrompt = `<s>[INST] <<SYS>>
+${systemPrompt}
+<</SYS>>
+
+CURRENT GAME STATE: ${JSON.stringify(gameState)}
+LATEST USER ACTION: ${lastUserAction}
+GENERATE THE NEXT JSON RESPONSE: [/INST]`;
 
     // Construct the payload for the SambaNova text generation endpoint
     const payload = {
@@ -41,7 +49,6 @@ export default async function handler(req, res) {
         params: {
             model: "Llama-4-Maverick-17B-128E-Instruct",
             max_tokens_to_generate: 1024,
-            // Add other parameters like temperature if needed
         }
     };
 
