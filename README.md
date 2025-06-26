@@ -1,14 +1,14 @@
-# 🌆 Astor Peak: Unlimited 🌆
+# 🌆 City of Angels 🌆
 
-*v3.2.2 (In Development by OxyIsBad)*
+*v3.3.0 (In Development by OxyIsBad)*
 
 ---
 
-### 🔥 Welcome to Astor Peak 🔥
+### 🔥 Welcome to the City of Angels 🔥
 
 **Your Story. Your Rules. No Limits.**
 
-Ever wanted to live another life? In the sprawling, sun-scorched metropolis of Astor Peak, you can be anyone. A hero, a villain, a lover, a fighter, a kingpin, or a ghost. The choice is yours.
+Ever wanted to live another life? In the sprawling, sun-scorched metropolis of the City of Angels, you can be anyone. A hero, a villain, a lover, a fighter, a kingpin, or a ghost. The choice is yours.
 
 -   **🤖 Truly Dynamic Storytelling**: Powered by the Gemini AI, no two playthroughs are the same.
 -   **🌃 A City of Vice & Virtue**: Explore a gritty, mature world inspired by the darkest corners of Los Angeles.
@@ -22,7 +22,7 @@ Ever wanted to live another life? In the sprawling, sun-scorched metropolis of A
 
 ### 🚀 Building and Deployment (Secure) 🚀
 
-This guide explains how to securely deploy your own instance of Astor Peak using Vercel Environment Variables to protect your API key.
+This guide explains how to securely deploy your own instance of City of Angels using Vercel Environment Variables to protect your API key.
 
 #### Prerequisites
 
