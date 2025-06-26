@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Astor Peak: Unlimited</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #111827;
+            color: #E5E7EB;
+        }
+        #game-container {
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            background: rgba(17, 24, 39, 0.85);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        #hud-container {
+            font-family: 'Orbitron', sans-serif;
+        }
+        .hud-item { transition: all 0.3s ease; }
+        .hud-item:hover { transform: scale(1.05); background-color: #374151; }
+        .option-button, #inventory-button { transition: all 0.2s ease; }
+        .option-button:hover, #inventory-button:hover {
+            background-color: #4F46E5;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4);
+        }
+        #game-output::-webkit-scrollbar { width: 8px; }
+        #game-output::-webkit-scrollbar-track { background: #1F2937; border-radius: 10px; }
+        #game-output::-webkit-scrollbar-thumb { background: #4F46E5; border-radius: 10px; }
+        #game-output::-webkit-scrollbar-thumb:hover { background: #6366F1; }
+        #modal-backdrop { transition: opacity 0.3s ease-in-out; }
+        #modal-content { transition: transform 0.3s ease-in-out; }
+        .loading-dots span {
+            animation: blink 1.4s infinite both;
+            display: inline-block;
+        }
+        .loading-dots span:nth-child(2) { animation-delay: 0.2s; }
+        .loading-dots span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes blink {
+            0% { opacity: 0.2; }
+            20% { opacity: 1; }
+            100% { opacity: 0.2; }
+        }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen p-2 sm:p-4">
+
+    <div id="game-container" class="w-full max-w-4xl min-h-[90vh] sm:min-h-[85vh] h-full mx-auto rounded-2xl shadow-2xl border border-gray-700">
+        <!-- Header & HUD -->
+        <header class="p-3 border-b border-gray-700">
+            <h1 class="text-xl md:text-2xl font-bold text-center text-indigo-400 tracking-wider" style="font-family: 'Orbitron', sans-serif;">Astor Peak: Unlimited</h1>
+            <div id="hud-container" class="grid grid-cols-2 md:grid-cols-4 gap-2 text-center mt-3 text-xs sm:text-base">
+                <div class="hud-item bg-gray-800 p-2 rounded-lg border border-gray-600"><span id="hud-money">💵 $0</span></div>
+                <div class="hud-item bg-gray-800 p-2 rounded-lg border border-gray-600"><span id="hud-health">❤️ 100%</span></div>
+                <div class="hud-item bg-gray-800 p-2 rounded-lg border border-gray-600"><span id="hud-reputation">🌤️ Neutral</span></div>
+                <div class="hud-item bg-gray-800 p-2 rounded-lg border border-gray-600"><span id="hud-relationships">👥 None</span></div>
+            </div>
+            <div class="text-center mt-2">
+                 <button id="inventory-button" class="bg-gray-700 text-white text-sm font-semibold py-1 px-4 rounded-lg w-full md:w-auto">Inventory</button>
+            </div>
+        </header>
+
+        <main id="game-output" class="flex-grow p-4 md:p-6 overflow-y-auto"></main>
+
+        <footer class="p-3 border-t border-gray-700 mt-auto">
+            <div id="quick-actions" class="flex flex-wrap gap-2 mb-3 justify-center"></div>
+            <div class="flex gap-2">
+                <input type="text" id="user-input" class="flex-grow bg-gray-900 border border-gray-600 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-indigo-500 w-full" placeholder="Type your action...">
+                <button id="send-button" class="bg-indigo-600 text-white font-bold py-2 px-4 sm:px-6 rounded-lg option-button">Send</button>
+            </div>
+             <div id="version-text" class="text-xs text-gray-500 mt-2 text-center">v3.1.0 (In Development by OxyIsBad)</div>
+        </footer>
+    </div>
+
+    <!-- Inventory Modal -->
+    <div id="modal-backdrop" class="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center p-4 hidden z-50">
+        <div id="modal-content" class="bg-gray-800 rounded-xl shadow-lg w-full max-w-md p-6 border border-gray-600 transform scale-95">
+            <h2 class="text-2xl font-bold mb-4 text-indigo-400">Inventory</h2>
+            <ul id="inventory-list" class="list-disc list-inside mb-6 text-gray-300"></ul>
+            <button id="close-modal-button" class="option-button w-full bg-indigo-600 text-white font-bold py-2 px-6 rounded-lg">Close</button>
+        </div>
+    </div>
+
+    <script>
+        // --- IMPORTANT: PASTE YOUR GEMINI API KEY HERE ---
+        const GEMINI_API_KEY = ""; // Intentionally left blank for this environment
+        // ---------------------------------------------------
+
+        const output = document.getElementById('game-output');
+        const input = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+        const quickActionsContainer = document.getElementById('quick-actions');
+        const hudMoney = document.getElementById('hud-money');
+        const hudHealth = document.getElementById('hud-health');
+        const hudReputation = document.getElementById('hud-reputation');
+        const hudRelationships = document.getElementById('hud-relationships');
+        const inventoryButton = document.getElementById('inventory-button');
+        const modalBackdrop = document.getElementById('modal-backdrop');
+        const modalContent = document.getElementById('modal-content');
+        const inventoryList = document.getElementById('inventory-list');
+        const closeModalButton = document.getElementById('close-modal-button');
+        const versionText = document.getElementById('version-text');
+
+        let gameState = {
+            devMode: false,
+            useYourWords: false,
+            currentScene: 'start',
+            character: { name: '', age: null, gender: '', orientation: '' },
+            stats: { money: 0, health: 100, reputation: 0 },
+            relationships: {},
+            inventory: [],
+            location: null,
+            history: [],
+        };
+
+        function updateHUD() {
+            hudMoney.innerHTML = `💵 $${gameState.stats.money}`;
+            hudHealth.innerHTML = `❤️ ${gameState.stats.health}%`;
+            let repText;
+            if (gameState.stats.reputation > 75) repText = '🦸';
+            else if (gameState.stats.reputation > 50) repText = '🦸‍♂️';
+            else if (gameState.stats.reputation > 25) repText = '🦸‍♀️';
+            else if (gameState.stats.reputation < -75) repText = '🦹';
+            else if (gameState.stats.reputation < -50) repText = '🦹‍♂️';
+            else if (gameState.stats.reputation < -25) repText = '🦹‍♀️';
+            else if (gameState.stats.reputation < 0) repText = '😈';
+            else repText = '🌤️';
+            hudReputation.textContent = `${repText} Reputation`;
+            
+            const rels = Object.entries(gameState.relationships);
+            hudRelationships.textContent = rels.length > 0 ? `👥 ${rels.length}` : '👥 None';
+        }
+
+        function displayInventory() {
+            inventoryList.innerHTML = '';
+            if (gameState.inventory.length === 0) {
+                inventoryList.innerHTML = '<li>Your pockets are empty.</li>';
+            } else {
+                gameState.inventory.forEach(item => {
+                    const li = document.createElement('li');
+                    li.textContent = item;
+                    inventoryList.appendChild(li);
+                });
+            }
+            modalBackdrop.classList.remove('hidden', 'opacity-0');
+            modalContent.classList.remove('scale-95');
+        }
+
+        function closeModal() {
+             modalBackdrop.classList.add('opacity-0');
+             modalContent.classList.add('scale-95');
+             setTimeout(() => modalBackdrop.classList.add('hidden'), 300);
+        }
+
+        function typeWriter(text, onComplete) {
+            output.innerHTML += `<p class="mb-4 text-gray-300"></p>`;
+            const p = output.lastElementChild;
+            let i = 0;
+            const speed = 15;
+            function type() {
+                if (i < text.length) {
+                    p.innerHTML += text.charAt(i); i++;
+                    output.scrollTop = output.scrollHeight;
+                    setTimeout(type, speed);
+                } else { if (onComplete) onComplete(); }
+            }
+            type();
+        }
+        
+        function renderOutput(text, onComplete) {
+            // This function handles both typing and instant display for devmode
+            if(gameState.devMode) {
+                output.innerHTML += `<p class="mb-4 text-gray-300">${text}</p>`;
+                output.scrollTop = output.scrollHeight;
+                if(onComplete) onComplete();
+            } else {
+                typeWriter(text, onComplete);
+            }
+        }
+
+        function renderQuickActions(actions) {
+            quickActionsContainer.innerHTML = '';
+            if (!actions || actions.length === 0) return;
+            actions.forEach(action => {
+                const button = document.createElement('button');
+                button.textContent = action.text;
+                button.className = 'option-button bg-gray-700 text-white text-sm font-semibold py-2 px-3 rounded-lg';
+                button.onclick = () => handleInput(action.action);
+                quickActionsContainer.appendChild(button);
+            });
+        }
+        
+        function showLoading(show) {
+            const existingLoading = document.getElementById('loading');
+            if (show) {
+                if(existingLoading) return;
+                const loadingElement = document.createElement('p');
+                loadingElement.id = 'loading';
+                loadingElement.className = 'text-center text-indigo-400 loading-dots';
+                loadingElement.innerHTML = '<span>.</span><span>.</span><span>.</span>';
+                output.appendChild(loadingElement);
+                output.scrollTop = output.scrollHeight;
+            } else {
+                if (existingLoading) existingLoading.remove();
+            }
+        }
+
+        async function generateStory() {
+            let chatHistory = [];
+            let systemPrompt = `You are a text-based city game rated for adults (Mature and NR content, Language, etc.) titled "Astor Peak: Unlimited."
+            **REMEMBER ALWAYS DISPLAY HUD AND QUICK ACTIONS**
+
+            **I. Game Start:** Your first message is "type PLAY to begin (Astor Peak: Unlimited)." After the user begins, offer numbered location choices (Ghetto, Arcade, Playground, School, Suburbs, High-Rise Apartment, Downtown Office). Each location has a short intro before character creation (name, age, gender, sexual orientation).
+
+            **II. Gameplay:** Turn-based. ALWAYS offer 3-5 quick options relevant to the situation. Allow freeform text input; interpret and react. Track resources/inventory (money💵🛥️🏎️🚕💸), health(health😷�👩🏻‍🦽‍➡️🩸), reputation(reputation🌤️🦸🦸‍♂️🦸‍♀️🚓🦹‍♀️🦹🦹‍♂️😈), and relationships(relationships👭👬👫) via the gameState.
+
+            **III. Adult Themes:** Integrate drug use (recreational, addiction, consequences), sex (encounters with consequences like pregnancy, STDs, abuse, love, romance, LGBT lifestyle), and violence (theft, fights, gangs, guns with realistic outcomes).
+
+            **IV. Story:** The narrative is dynamic, based in LA, and player-driven. It can be a love story, urban simulator, crime game, or superhero plot.
+
+            **V. Features:** Use a reputation system, random events, and mini-games. Descriptions can be detailed or concise for effect.
+
+            **VI. Technical:** Respond ONLY with a valid JSON object. Do not include any other text, markdown, or commentary. Update game state through the JSON.
+            `;
+
+            if(gameState.useYourWords){
+                systemPrompt += `\n**VII. Language:** The user has enabled "/useyourwords". You can and should use explicit language (e.g., "fuck, dick, cum, bitch, slut, pussy, etc.") where it is dramatically appropriate for the gritty, mature setting.`;
+            }
+            if(gameState.devMode){
+                systemPrompt += `\n**VIII. DEVMODE ACTIVE:** Any situation goes. The game can be altered and any character can be manipulated. This can produce detailed, intense, and graphic gameplay. You have full creative freedom to push the boundaries of the narrative.`;
+            }
+
+            chatHistory.push({ role: "user", parts: [{ text: systemPrompt }] });
+            chatHistory.push(...gameState.history);
+
+            const payload = {
+              contents: chatHistory,
+              generationConfig: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                  type: "OBJECT",
+                  properties: {
+                    text: { "type": "STRING", description: "The narrative text to show the player." },
+                    actions: {
+                      type: "ARRAY",
+                      description: "A list of 3-5 choices for the player.",
+                      items: {
+                        type: "OBJECT",
+                        properties: {
+                          text: { "type": "STRING", description: "The text on the button." },
+                          action: { "type": "STRING", description: "The action sent back to the game logic if clicked." }
+                        },
+                        required: ["text", "action"]
+                      }
+                    },
+                    newStats: { type: "OBJECT", description: "Changes to player stats.", properties: { money: { "type": "NUMBER" }, health: { "type": "NUMBER" }, reputation: { "type": "NUMBER" } } },
+                    addInventory: { type: "ARRAY", description: "Items to add to inventory.", items: { type: "STRING" }},
+                    removeInventory: { type: "ARRAY", description: "Items to remove from inventory.", items: { type: "STRING" }},
+                    newRelationships: { type: "OBJECT", description: "Updates to relationships. e.g. { 'Leo': { level: 'Friend', status: 'Likes you' } }" }
+                  },
+                  required: ["text", "actions"]
+                }
+              }
+            };
+
+            showLoading(true);
+            try {
+                // In a real deployment, you would not expose the API key on the client.
+                // This is simplified for demonstration.
+                const apiKey = typeof __gemini_api_key__ !== 'undefined' ? __gemini_api_key__ : GEMINI_API_KEY;
+                if (!apiKey) throw new Error("API Key is missing.");
+
+                const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    console.error("API Error:", errorBody);
+                    return { text: `Error: ${errorBody.error.message || response.statusText}. Check the console for details.`, actions: [] };
+                }
+
+                const data = await response.json();
+                if(!data.candidates || data.candidates.length === 0){
+                    console.error("API Response Error: No candidates found", data);
+                    return { text: "The story fades... (The AI returned an empty response).", actions: [] };
+                }
+
+                const content = JSON.parse(data.candidates[0].content.parts[0].text);
+                gameState.history.push({role: "model", parts: [{text: JSON.stringify(content)}]});
+                
+                if (content.newStats) { Object.assign(gameState.stats, content.newStats); }
+                if (content.addInventory) { content.addInventory.forEach(item => { if (!gameState.inventory.includes(item)) gameState.inventory.push(item); }); }
+                if (content.removeInventory) { gameState.inventory = gameState.inventory.filter(item => !content.removeInventory.includes(item)); }
+                if (content.newRelationships) { Object.assign(gameState.relationships, content.newRelationships); }
+
+                return content;
+
+            } catch (error) {
+                console.error("Fetch/System Error:", error);
+                return { text: `A system error occurred: ${error.message}. Check the console.`, actions: [] };
+            } finally {
+                showLoading(false);
+            }
+        }
+        
+        async function handleInput(value) {
+            const playerInput = value.trim();
+            if (playerInput === '' || document.getElementById('loading')) return;
+
+            // Handle local commands first
+            if (playerInput.startsWith('/')) {
+                const command = playerInput.toLowerCase();
+                let responseText;
+                if (command === '/devmode') {
+                    gameState.devMode = !gameState.devMode;
+                    responseText = `DEVMODE is now ${gameState.devMode ? 'ON' : 'OFF'}.`;
+                } else if (command === '/useyourwords') {
+                    gameState.useYourWords = !gameState.useYourWords;
+                    responseText = `Explicit language is now ${gameState.useYourWords ? 'ENABLED' : 'DISABLED'}.`;
+                } else {
+                    responseText = `Unknown command: ${playerInput}`;
+                }
+                renderOutput(responseText);
+                input.value = '';
+                return;
+            }
+
+            const playerActionElement = document.createElement('p');
+            playerActionElement.className = 'text-right text-indigo-300 italic mb-4';
+            playerActionElement.textContent = `> ${playerInput}`;
+            output.appendChild(playerActionElement);
+            
+            input.value = '';
+            renderQuickActions([]);
+            output.scrollTop = output.scrollHeight;
+
+            let response;
+            if (gameState.currentScene.startsWith('in_game')) {
+                const prompt = `CURRENT STATE: ${JSON.stringify({character: gameState.character, stats: gameState.stats, location: gameState.location, inventory: gameState.inventory, relationships: gameState.relationships })} \n\nUSER ACTION: "${playerInput}"`;
+                gameState.history.push({role: "user", parts: [{text: prompt}]});
+                response = await generateStory();
+            } else {
+                response = getSetupResponse(playerInput);
+            }
+            
+            renderOutput(response.text, () => {
+                renderQuickActions(response.actions);
+                updateHUD();
+                output.scrollTop = output.scrollHeight;
+            });
+        }
+        
+        function getSetupResponse(playerInput) {
+            switch (gameState.currentScene) {
+                case 'start':
+                    if (playerInput.toLowerCase() === 'play') {
+                        gameState.currentScene = 'location_select';
+                        return { text: "The smog-filled sky of Astor Peak presses down... Where do you find yourself?", actions: [ 
+                            { text: "Ghetto", action: "1" }, { text: "Arcade", action: "2" }, { text: "Playground", action: "3" },
+                            { text: "School", action: "4" }, { text: "Suburbs", action: "5" }, { text: "High-Rise", action: "6" },
+                            { text: "Downtown Office", action: "7" }
+                        ]};
+                    }
+                    return { text: "Type PLAY to begin (Astor Peak: Unlimited)." };
+                
+                case 'location_select':
+                    const locations = {'1': 'Ghetto', '2': 'Arcade', '3': 'Playground', '4': 'School', '5': 'Suburbs', '6': 'High-Rise Apartment', '7': 'Downtown Office'};
+                    if (locations[playerInput]) {
+                        gameState.location = locations[playerInput];
+                        gameState.currentScene = 'create_name';
+                        const intros = {
+                            'Ghetto': "The smell of stale beer, damp concrete, and desperation hangs heavy.",
+                            'Arcade': "Neon lights bleed across sticky floors. The air is thick with the electric hum of machines.",
+                            'Playground': "Rusting chains squeak in the wind. A single red ball sits abandoned in the sandbox.",
+                            'School': "The silence of empty hallways is deafening. The lingering smell of floor wax and teenage angst remains.",
+                            'Suburbs': "Manicured lawns and cookie-cutter houses hide secrets behind closed doors.",
+                            'High-Rise Apartment': "Floor-to-ceiling windows offer a god's-eye view of the sprawling city below.",
+                            'Downtown Office': "The sterile, air-conditioned silence is broken only by the clacking of keyboards."
+                        };
+                        return { text: `${intros[gameState.location]} Before your story begins, who are you? What is your name?` };
+                    }
+                    return { text: "Please select a valid location." };
+
+                case 'create_name': gameState.character.name = playerInput.trim(); gameState.currentScene = 'create_age'; return { text: `Alright, ${gameState.character.name}. How old are you?` };
+                
+                case 'create_age':
+                    const age = parseInt(playerInput, 10);
+                    if (!isNaN(age) && age >= 18) { gameState.character.age = age; gameState.currentScene = 'create_gender'; return { text: `Age ${age}. And your gender?` }; }
+                    return { text: "Please enter a valid age (18+)." };
+
+                case 'create_gender': gameState.character.gender = playerInput.trim(); gameState.currentScene = 'create_orientation'; return { text: `And finally, what is your sexual orientation?` };
+                
+                case 'create_orientation':
+                    gameState.character.orientation = playerInput.trim();
+                    gameState.currentScene = 'in_game_start';
+                    handleInput("START_GAME");
+                    return { text: "Your story is about to begin..." };
+            }
+        }
+
+        // --- Event Listeners ---
+        sendButton.addEventListener('click', () => handleInput(input.value));
+        input.addEventListener('keyup', (event) => { if (event.key === 'Enter') { handleInput(input.value); } });
+        inventoryButton.addEventListener('click', displayInventory);
+        closeModalButton.addEventListener('click', closeModal);
+        modalBackdrop.addEventListener('click', (e) => { if (e.target === modalBackdrop) closeModal(); });
+
+        // --- Initial Game Load ---
+        function init() {
+            updateHUD();
+            renderOutput("type PLAY to begin (Astor Peak: Unlimited).", () => {
+                 renderQuickActions([{ text: "PLAY", action: "play" }]);
+            });
+        }
+
+        init();
+    </script>
+</body>
+</html>
+�
