@@ -31,54 +31,51 @@ export default async function handler(req, res) {
         systemPrompt += `\n- **DEVMODE:** DEVMODE is ON. Push boundaries. Any scenario is possible.`;
     }
 
-    // Get the last user action from history
+    // --- Construct the messages payload for the Chat Completions API ---
+    let messages = [];
+    messages.push({ role: "system", content: systemPrompt });
+
+    // Add game state and last action to the user message for context
     const lastUserAction = gameState.history[gameState.history.length - 1]?.parts[0]?.text || '';
-    
-    // Format the prompt for the Llama-style instruct model
-    const fullPrompt = `<s>[INST] <<SYS>>
-${systemPrompt}
-<</SYS>>
+    const userContext = `CURRENT GAME STATE: ${JSON.stringify(gameState)}\n\nLATEST USER ACTION: ${lastUserAction}\n\nGENERATE THE NEXT JSON RESPONSE:`;
+    messages.push({ role: "user", content: userContext });
 
-CURRENT GAME STATE: ${JSON.stringify(gameState)}
-LATEST USER ACTION: ${lastUserAction}
-GENERATE THE NEXT JSON RESPONSE: [/INST]`;
 
-    // Construct the payload for the SambaNova text generation endpoint
+    // Construct the final payload for the SambaNova Chat Completions endpoint
     const payload = {
-        instance: fullPrompt,
-        params: {
-            model: "Llama-4-Maverick-17B-128E-Instruct",
-            max_tokens_to_generate: 1024,
-        }
+        model: "Llama-4-Maverick-17B-128E-Instruct",
+        messages: messages,
+        max_tokens_to_generate: 1024,
     };
 
     try {
-        // The SambaNova API endpoint for text generation
-        const apiResponse = await fetch(`https://cloud.sambanova.ai/api/predict/generic/text-generation`, {
+        // Use the correct v1 Chat Completions endpoint
+        const apiResponse = await fetch(`https://api.sambanova.ai/v1/chat/completions`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
-                'key': SAMBANOVA_API_KEY // SambaNova uses 'key' in the header
+                'Authorization': `Bearer ${SAMBANOVA_API_KEY}` // Use Bearer token authorization
             },
             body: JSON.stringify(payload)
         });
 
         if (!apiResponse.ok) {
-            const errorBody = await apiResponse.text();
+            const errorBody = await apiResponse.json(); // .json() is standard for v1 APIs
             console.error("SambaNova API Error:", errorBody);
-            return res.status(apiResponse.status).json({ error: `SambaNova API Error: ${errorBody}` });
+            const errorMessage = errorBody.detail || JSON.stringify(errorBody);
+            return res.status(apiResponse.status).json({ error: `SambaNova API Error: ${errorMessage}` });
         }
 
         const data = await apiResponse.json();
 
-        // The generated JSON string is in 'result.completion'
-        if (!data.result || !data.result.completion) {
+        // The response structure for chat completions is different
+        if (!data.choices || data.choices.length === 0 || !data.choices[0].message.content) {
             console.error("SambaNova API Response Format Error:", data);
             return res.status(500).json({ error: 'The AI failed to return text in the expected format.' });
         }
         
         // Attempt to parse the JSON string returned by the model
-        const jsonString = data.result.completion;
+        const jsonString = data.choices[0].message.content;
         const content = JSON.parse(jsonString);
         
         res.status(200).json(content);
