@@ -82,14 +82,14 @@
 </head>
 <body class="flex items-center justify-center min-h-screen p-2 sm:p-4">
 
-    <div id="game-container" class="w-full max-w-4xl min-h-[90vh] sm:min-h-[85vh] h-full mx-auto rounded-2xl flex flex-col overflow-hidden">
+    <div id="game-container" class="w-full max-w-4xl h-[95vh] sm:h-[90vh] mx-auto rounded-2xl flex flex-col overflow-hidden">
         <!-- Header -->
-        <header class="p-3 border-b" style="border-color: var(--border-color);">
+        <header class="p-3 border-b flex-shrink-0" style="border-color: var(--border-color);">
             <h1 class="text-xl md:text-2xl font-bold text-center tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white to-[var(--primary-accent)]" style="font-family: var(--font-display);">City of Angels</h1>
         </header>
         
         <!-- HUD -->
-        <div id="hud-container" class="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 text-center text-xs sm:text-sm">
+        <div id="hud-container" class="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 text-center text-xs sm:text-sm flex-shrink-0">
             <div id="hud-money-btn" class="hud-item p-2 rounded-lg"><span id="hud-money">💵 $0</span></div>
             <div id="hud-health-btn" class="hud-item p-2 rounded-lg"><span id="hud-health">❤️ 100%</span></div>
             <div id="hud-reputation-btn" class="hud-item p-2 rounded-lg"><span id="hud-reputation">🌤️ Neutral</span></div>
@@ -100,7 +100,7 @@
         <main id="game-output" class="flex-grow p-4 md:p-6 overflow-y-auto space-y-4"></main>
 
         <!-- Footer / Input Area -->
-        <footer class="p-3 border-t mt-auto" style="border-color: var(--border-color);">
+        <footer class="p-3 border-t mt-auto flex-shrink-0" style="border-color: var(--border-color);">
             <div class="flex items-center justify-center gap-2 mb-3">
                  <button id="inventory-button" class="bg-gray-700 text-white text-sm font-semibold py-2 px-5 rounded-lg w-full max-w-xs">Inventory</button>
                  <button id="image-gen-button" class="bg-gray-700 text-white text-sm font-semibold py-2 px-5 rounded-lg w-full max-w-xs">Generate Scene</button>
@@ -110,7 +110,7 @@
                 <input type="text" id="user-input" class="flex-grow bg-gray-900 border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 w-full" style="border-color: var(--border-color); focus-ring-color: var(--primary-accent);" placeholder="What do you do?">
                 <button id="send-button" class="text-white font-bold py-3 px-5 rounded-lg option-button">Send</button>
             </div>
-             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.3.0 (In Development by OxyIsBad)</div>
+             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.3.1 (In Development by OxyIsBad)</div>
         </footer>
     </div>
 
@@ -256,6 +256,17 @@
             }
         }
         
+        // --- Utility Functions ---
+        function deepMerge(target, source) {
+            for (const key in source) {
+                if (source[key] instanceof Object && key in target) {
+                    Object.assign(source[key], deepMerge(target[key], source[key]));
+                }
+            }
+            Object.assign(target || {}, source);
+            return target;
+        }
+
         // --- API & Game Logic ---
         async function generateStory() {
             showLoading(true);
@@ -269,10 +280,14 @@
                 const content = await response.json();
                 
                 gameState.history.push({role: "user", parts: [{text: content.promptSentToAI}]}, {role: "model", parts: [{text: JSON.stringify(content)}]});
-                if (content.newStats) { Object.assign(gameState.stats, content.newStats); }
+                
+                // Use deepMerge to update nested stats and relationships correctly
+                if (content.newStats) { deepMerge(gameState.stats, content.newStats); }
+                if (content.newRelationships) { deepMerge(gameState.relationships, content.newRelationships); }
+
                 if (content.addInventory) { content.addInventory.forEach(item => { if (!gameState.inventory.includes(item)) gameState.inventory.push(item); }); }
                 if (content.removeInventory) { gameState.inventory = gameState.inventory.filter(item => !content.removeInventory.includes(item)); }
-                if (content.newRelationships) { Object.assign(gameState.relationships, content.newRelationships); }
+                
                 return content;
             } catch (error) {
                 return { narration: `Error: ${error.message}` };
@@ -331,7 +346,9 @@
                 return;
             }
             
-            renderOutput(null, true, playerInput);
+            if (playerInput !== 'START_GAME') {
+                renderOutput(null, true, playerInput);
+            }
             
             input.value = '';
             quickActionsContainer.innerHTML = '';
