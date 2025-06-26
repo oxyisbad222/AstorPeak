@@ -1,6 +1,6 @@
 {
-  "name": "astor-peak-unlimited",
-  "version": "3.2.1",
+  "name": "city-of-angels",
+  "version": "3.3.4",
   "description": "A generative text-based adventure game.",
   "main": "index.html",
   "scripts": {
@@ -10,7 +10,7 @@
   "keywords": [
     "tba",
     "generative-ai",
-    "gemini",
+    "sambanova",
     "game"
   ],
   "author": "OxyIsBad",
