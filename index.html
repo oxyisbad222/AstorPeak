@@ -90,7 +90,7 @@
         
         <!-- HUD -->
         <div id="hud-container" class="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 text-center text-xs sm:text-sm flex-shrink-0">
-            <div id="hud-money-btn" class="hud-item p-2 rounded-lg"><span id="hud-money">� $0</span></div>
+            <div id="hud-money-btn" class="hud-item p-2 rounded-lg"><span id="hud-money">💵 $0</span></div>
             <div id="hud-health-btn" class="hud-item p-2 rounded-lg"><span id="hud-health">❤️ 100%</span></div>
             <div id="hud-reputation-btn" class="hud-item p-2 rounded-lg"><span id="hud-reputation">🌤️ Neutral</span></div>
             <div id="hud-relationships-btn" class="hud-item p-2 rounded-lg"><span id="hud-relationships">👥 None</span></div>
@@ -108,6 +108,9 @@
                     <option value="mistral-7b-instruct">Mistral (Default)</option>
                     <option value="llama-3-8b-instruct">Llama 3 (8B)</option>
                     <option value="mistral-large-latest">Mistral Large</option>
+                    <option value="gemini-1.5-flash">Gemini 1.5 Flash</option>
+                    <option value="google/gemini-2.5-pro-preview-05-06">Gemini 2.5 Pro</option>
+                    <option value="x-ai/grok-3-beta">Grok 3 Beta</option>
                  </select>
             </div>
             <div id="quick-actions" class="flex flex-wrap gap-2 mb-3 justify-center"></div>
@@ -115,7 +118,7 @@
                 <input type="text" id="user-input" class="flex-grow bg-gray-900 border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 w-full" style="border-color: var(--border-color); focus-ring-color: var(--primary-accent);" placeholder="What do you do?">
                 <button id="send-button" class="text-white font-bold py-3 px-5 rounded-lg option-button">Send</button>
             </div>
-             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.3.2 (In Development by OxyIsBad)</div>
+             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.3.3 (In Development by OxyIsBad)</div>
         </footer>
     </div>
 
@@ -481,4 +484,3 @@
     </script>
 </body>
 </html>
-�
