@@ -1,4 +1,6 @@
 // This is a Node.js serverless function for text generation using SambaNova
+import OpenAI from "openai";
+
 export default async function handler(req, res) {
     if (req.method !== 'POST') {
         return res.status(405).json({ error: 'Method Not Allowed' });
@@ -40,49 +42,35 @@ export default async function handler(req, res) {
     const userContext = `CURRENT GAME STATE: ${JSON.stringify(gameState)}\n\nLATEST USER ACTION: ${lastUserAction}\n\nGENERATE THE NEXT JSON RESPONSE:`;
     messages.push({ role: "user", content: userContext });
 
-
-    // Construct the final payload for the SambaNova Chat Completions endpoint
-    const payload = {
-        model: "Llama-4-Maverick-17B-128E-Instruct",
-        messages: messages,
-        max_tokens_to_generate: 1024,
-    };
+    // Instantiate the OpenAI client with SambaNova configuration
+    const client = new OpenAI({
+      baseURL: "https://api.sambanova.ai/v1",
+      apiKey: SAMBANOVA_API_KEY,
+    });
 
     try {
-        // Use the correct v1 Chat Completions endpoint
-        const apiResponse = await fetch(`https://api.sambanova.ai/v1/chat/completions`, {
-            method: 'POST',
-            headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${SAMBANOVA_API_KEY}` // Use Bearer token authorization
-            },
-            body: JSON.stringify(payload)
+        // Use the OpenAI client to create a chat completion
+        const chatCompletion = await client.chat.completions.create({
+            model: "Llama-4-Maverick-17B-128E-Instruct",
+            messages: messages,
+            max_tokens: 1024, // Note: parameter name might be different, e.g., max_tokens_to_generate
         });
 
-        if (!apiResponse.ok) {
-            const errorBody = await apiResponse.json(); // .json() is standard for v1 APIs
-            console.error("SambaNova API Error:", errorBody);
-            const errorMessage = errorBody.detail || JSON.stringify(errorBody);
-            return res.status(apiResponse.status).json({ error: `SambaNova API Error: ${errorMessage}` });
-        }
-
-        const data = await apiResponse.json();
-
-        // The response structure for chat completions is different
-        if (!data.choices || data.choices.length === 0 || !data.choices[0].message.content) {
-            console.error("SambaNova API Response Format Error:", data);
+        // The response structure for the client library is standardized
+        if (!chatCompletion.choices || chatCompletion.choices.length === 0 || !chatCompletion.choices[0].message.content) {
+            console.error("SambaNova API Response Format Error:", chatCompletion);
             return res.status(500).json({ error: 'The AI failed to return text in the expected format.' });
         }
         
         // Attempt to parse the JSON string returned by the model
-        const jsonString = data.choices[0].message.content;
+        const jsonString = chatCompletion.choices[0].message.content;
         const content = JSON.parse(jsonString);
         
         res.status(200).json(content);
 
     } catch (error) {
         console.error("Server-side Error:", error);
-        // This will catch both fetch errors and JSON.parse errors
+        // This will catch both API errors from the client and JSON.parse errors
         res.status(500).json({ error: `An error occurred on the server: ${error.message}` });
     }
 }
