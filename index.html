@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>City of Angels</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://js.puter.com/v2/"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Orbitron:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -83,23 +84,27 @@
 <body class="flex items-center justify-center min-h-screen p-2 sm:p-4">
 
     <div id="game-container" class="w-full max-w-4xl h-[95vh] sm:h-[90vh] mx-auto rounded-2xl flex flex-col overflow-hidden">
-        <!-- Header -->
         <header class="p-3 border-b flex-shrink-0" style="border-color: var(--border-color);">
-            <h1 class="text-xl md:text-2xl font-bold text-center tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white to-[var(--primary-accent)]" style="font-family: var(--font-display);">City of Angels</h1>
+            <div class="flex justify-between items-center">
+                <h1 class="text-xl md:text-2xl font-bold text-center tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-white to-[var(--primary-accent)]" style="font-family: var(--font-display);">City of Angels</h1>
+                <select id="model-selector" class="bg-gray-700 text-white text-sm rounded-lg p-2">
+                    <option value="google/gemini-flash-1.5">Gemini 1.5 Flash</option>
+                    <option value="google/gemini-pro-1.5">Gemini 1.5 Pro</option>
+                    <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
+                    <option value="openai/gpt-4o">OpenAI GPT-4o</option>
+                </select>
+            </div>
         </header>
         
-        <!-- HUD -->
         <div id="hud-container" class="grid grid-cols-2 md:grid-cols-4 gap-3 p-3 text-center text-xs sm:text-sm flex-shrink-0">
-            <div id="hud-money-btn" class="hud-item p-2 rounded-lg"><span id="hud-money">� $0</span></div>
+            <div id="hud-money-btn" class="hud-item p-2 rounded-lg"><span id="hud-money">💵 $0</span></div>
             <div id="hud-health-btn" class="hud-item p-2 rounded-lg"><span id="hud-health">❤️ 100%</span></div>
             <div id="hud-reputation-btn" class="hud-item p-2 rounded-lg"><span id="hud-reputation">🌤️ Neutral</span></div>
             <div id="hud-relationships-btn" class="hud-item p-2 rounded-lg"><span id="hud-relationships">👥 None</span></div>
         </div>
 
-        <!-- Game Output -->
         <main id="game-output" class="flex-grow p-4 md:p-6 overflow-y-auto space-y-4"></main>
 
-        <!-- Footer / Input Area -->
         <footer class="p-3 border-t mt-auto flex-shrink-0" style="border-color: var(--border-color);">
             <div class="flex items-center justify-center gap-2 mb-3">
                  <button id="inventory-button" class="bg-gray-700 text-white text-sm font-semibold py-2 px-5 rounded-lg w-full sm:w-auto flex-grow">Inventory</button>
@@ -110,11 +115,10 @@
                 <input type="text" id="user-input" class="flex-grow bg-gray-900 border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 w-full" style="border-color: var(--border-color); focus-ring-color: var(--primary-accent);" placeholder="What do you do?">
                 <button id="send-button" class="text-white font-bold py-3 px-5 rounded-lg option-button">Send</button>
             </div>
-             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.3.4 (In Development by OxyIsBad)</div>
+             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.4.1 (Puter.js Edition)</div>
         </footer>
     </div>
 
-    <!-- Modals Container -->
     <div id="modal-container"></div>
 
     <script>
@@ -125,6 +129,7 @@
         const quickActionsContainer = document.getElementById('quick-actions');
         const modalContainer = document.getElementById('modal-container');
         const imageGenButton = document.getElementById('image-gen-button');
+        const modelSelector = document.getElementById('model-selector');
 
         // --- Game State ---
         let gameState = {
@@ -132,7 +137,6 @@
             useYourWords: false,
             currentScene: 'start',
             lastNarration: '',
-            selectedModel: 'Llama-4-Maverick-17B-128E-Instruct', // Hardcoded model
             character: { name: '', age: null, gender: '', orientation: '' },
             stats: {
                 money: { cash: 0, assets: [] },
@@ -271,16 +275,37 @@
         // --- API & Game Logic ---
         async function generateStory() {
             showLoading(true);
+
+            let systemPrompt = `You are a text-based city game rated for adults titled "City of Angels."
+            **RULES:**
+            - ALWAYS provide 3-5 relevant quick action choices.
+            - The story is dynamic, based in LA, and player-driven.
+            - **IMPORTANT:** Structure your response to separate narration from dialogue. Use the 'narration' field for descriptions of scenes, actions, and internal thoughts. Use the 'dialogue' field ONLY for words spoken by an NPC.
+            - Update game state (stats, inventory, relationships) logically based on the player's action.
+            - Respond ONLY with a valid JSON object string. Do not add any other text or commentary outside the JSON structure.
+            - The JSON schema you must follow is: {"narration": "string", "dialogue": "string", "actions": [{"text": "string", "action": "string"}], "newStats": {"money": {"cash": "number"}, "health": {"value": "number", "mentalState": "string"}, "reputation": {"score": "number"}}, "addInventory": ["string"], "removeInventory": ["string"], "newRelationships": {"npcName": {"level": "string", "status": "string"}}}
+            `;
+
+            if(gameState.useYourWords){
+                systemPrompt += `\n- **LANGUAGE:** Explicit language (fuck, bitch, etc.) is enabled and encouraged for realism.`;
+            }
+            if(gameState.devMode){
+                systemPrompt += `\n- **DEVMODE:** DEVMODE is ON. Push boundaries. Any scenario is possible.`;
+            }
+
+            const lastUserAction = gameState.history[gameState.history.length - 1]?.parts[0]?.text || '';
+            const userContext = `CURRENT GAME STATE: ${JSON.stringify(gameState)}\n\nLATEST USER ACTION: ${lastUserAction}\n\nGENERATE THE NEXT JSON RESPONSE:`;
+            
             try {
-                const response = await fetch('/api/generate', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(gameState) 
+                const response = await puter.ai.chat(userContext, {
+                    model: modelSelector.value,
+                    system: systemPrompt
                 });
-                if (!response.ok) throw new Error((await response.json()).error);
-                const content = await response.json();
                 
-                gameState.history.push({role: "user", parts: [{text: content.promptSentToAI}]}, {role: "model", parts: [{text: JSON.stringify(content)}]});
+                const jsonString = response.message.content;
+                const content = JSON.parse(jsonString);
+
+                gameState.history.push({role: "user", parts: [{text: userContext}]}, {role: "model", parts: [{text: jsonString}]});
                 
                 if (content.newStats) { deepMerge(gameState.stats, content.newStats); }
                 if (content.newRelationships) { deepMerge(gameState.relationships, content.newRelationships); }
@@ -290,7 +315,8 @@
                 
                 return content;
             } catch (error) {
-                return { narration: `Error: ${error.message}` };
+                console.error("Puter.js Error:", error);
+                return { narration: `Error: The AI response was not valid JSON. Please try again. \n ${error.message}` };
             } finally {
                 showLoading(false);
             }
@@ -305,14 +331,10 @@
             
             try {
                 const prompt = `A gritty, photorealistic, cinematic scene from the game City of Angels. The scene is: ${gameState.lastNarration}`;
-                const response = await fetch('/api/image', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ prompt })
-                });
-                if (!response.ok) throw new Error((await response.json()).error);
-                const { imageUrl } = await response.json();
-                imageContainer.innerHTML = `<img src="${imageUrl}" class="w-full h-full object-cover rounded-lg">`;
+                const imageElement = await puter.ai.txt2img(prompt);
+                imageContainer.innerHTML = '';
+                imageElement.className = "w-full h-full object-cover rounded-lg";
+                imageContainer.appendChild(imageElement);
             } catch (error) {
                 imageContainer.innerHTML = `<p class="text-red-400 text-center p-4">Image generation failed: ${error.message}</p>`;
             } finally {
@@ -472,4 +494,3 @@
     </script>
 </body>
 </html>
-�
