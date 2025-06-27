@@ -1,6 +1,6 @@
 # 🌆 City of Angels 🌆
 
-*v3.3.0 (In Development by OxyIsBad)*
+*v3.4.0 (Puter.js Edition)*
 
 ---
 
@@ -10,7 +10,8 @@
 
 Ever wanted to live another life? In the sprawling, sun-scorched metropolis of the City of Angels, you can be anyone. A hero, a villain, a lover, a fighter, a kingpin, or a ghost. The choice is yours.
 
--   **🤖 Truly Dynamic Storytelling**: Powered by the Gemini AI, no two playthroughs are the same.
+-   **🤖 Truly Dynamic Storytelling**: Powered by modern AI models like Gemini, Claude, and GPT-4o, no two playthroughs are the same.
+-   **⚡️ Zero-Setup Client-Side AI**: Runs entirely in your browser using Puter.js, no backend or API keys required.
 -   **🌃 A City of Vice & Virtue**: Explore a gritty, mature world inspired by the darkest corners of Los Angeles.
 -   **📊 Live on the Edge**: Keep a close eye on your vitals with a real-time HUD (Money 💵, Health ❤️, Reputation 😈, Relationships 👥).
 -   **🔞 100% Uncensored**: This is a game for adults with realistic consequences.
@@ -20,49 +21,11 @@ Ever wanted to live another life? In the sprawling, sun-scorched metropolis of t
 
 ---
 
-### 🚀 Building and Deployment (Secure) 🚀
+### 🚀 Running the Game 🚀
 
-This guide explains how to securely deploy your own instance of City of Angels using Vercel Environment Variables to protect your API key.
+This version of City of Angels runs entirely in your web browser. No complex setup is needed!
 
-#### Prerequisites
+1.  **Download the files:** Make sure you have `index.html` and the other project files.
+2.  **Open `index.html`:** Simply open the `index.html` file in a modern web browser (like Chrome, Firefox, or Edge).
 
-1.  **A GitHub Account**: If you don't have one, sign up at [GitHub](https://github.com).
-2.  **A Google Gemini API Key**:
-    * Go to [Google AI Studio](https://aistudio.google.com/).
-    * Sign in and click "**Get API key**" -> "**Create API key in new project**".
-    * Copy the generated API key. **Keep this secret!**
-
-#### Deployment Steps
-
-1.  **Set Up Your GitHub Repository**
-    * Create a new, empty repository on GitHub.
-    * Make sure your project has the following structure:
-      ```
-      /
-      ├── api/
-      │   └── generate.js  (The serverless function)
-      │   └── image.js     (The image generation function)
-      ├── .gitignore
-      ├── index.html       (The main game file)
-      ├── package.json
-      └── README.md
-      ```
-    * Upload all the project files to your new GitHub repository. **Your `index.html` should NOT contain your API key.**
-
-2.  **Deploy Project to Vercel**
-    * Go to [Vercel](https://vercel.com) and sign up with your GitHub account.
-    * From your dashboard, click "**Add New...**" -> "**Project**".
-    * Find and **Import** your game's repository from the list.
-
-3.  **Add Your Environment Variable**
-    * In the "Configure Project" screen, expand the **Environment Variables** section.
-    * Add a new variable:
-        * **Name**: `GEMINI_API_KEY`
-        * **Value**: Paste your secret Gemini API key here.
-    * Click **Add**.
-
-4.  **Deploy!**
-    * Click the **Deploy** button.
-    * Vercel will build your project. It will automatically detect the files in the `api/` directory and set them up as serverless functions that can securely access your `GEMINI_API_KEY`.
-
-Once it's finished, Vercel will provide a URL to your live, secure game.
+That's it! The game will start, and you can begin your new life in the City of Angels. You can select your preferred AI model from the dropdown menu in the top-right corner.
