@@ -119,7 +119,7 @@
                 <input type="text" id="user-input" class="flex-grow bg-gray-900 border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 w-full" style="border-color: var(--border-color); focus-ring-color: var(--primary-accent);" placeholder="What do you do?">
                 <button id="send-button" class="text-white font-bold py-3 px-5 rounded-lg option-button">Send</button>
             </div>
-             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.4.3 (Puter.js Edition)</div>
+             <div id="version-text" class="text-xs mt-3 text-center" style="color: var(--text-secondary);">v3.4.4 (Puter.js Edition)</div>
         </footer>
     </div>
 
@@ -307,16 +307,23 @@
                     system: systemPrompt
                 });
                 
-                // **FIX:** Clean the AI response to remove markdown code blocks
                 let jsonString = response.message.content;
                 const firstBrace = jsonString.indexOf('{');
                 const lastBrace = jsonString.lastIndexOf('}');
 
-                if (firstBrace !== -1 && lastBrace > firstBrace) {
-                    jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+                if (firstBrace === -1 || lastBrace === -1 || lastBrace < firstBrace) {
+                    console.error("AI did not return a valid JSON object. Response:", jsonString);
+                    return { narration: `The AI's response was not in the expected format. The raw response was: "${jsonString}"`, actions: [{ text: "Try again", action: "Let's try that again." }] };
                 }
 
+                jsonString = jsonString.substring(firstBrace, lastBrace + 1);
+
                 const content = JSON.parse(jsonString);
+
+                if (!content.actions || content.actions.length === 0) {
+                     console.warn("AI response is missing actions. Adding a fallback. Response:", content);
+                     content.actions = [{ text: "What happens next?", action: "What happens next?" }];
+                }
 
                 gameState.history.push({role: "user", parts: [{text: userContext}]}, {role: "model", parts: [{text: jsonString}]});
                 
@@ -328,8 +335,8 @@
                 
                 return content;
             } catch (error) {
-                console.error("Puter.js Error:", error);
-                return { narration: `Error: The AI response was not valid JSON. Please try again. \n ${error.message}` };
+                console.error("Puter.js Error in generateStory:", error);
+                return { narration: `A technical error occurred. The AI's response could not be understood. Let's try again.`, actions: [{ text: "Try again", action: "I will try that again." }] };
             } finally {
                 showLoading(false);
             }
